@@ -26,7 +26,7 @@
                 --shadow: rgba(192, 192, 192, 0.2);
             }
         }
-        
+
         * {
             box-sizing: border-box;
             margin: 0;
@@ -51,42 +51,47 @@
             font-family: -apple-system, Helvetica, Hiragino Kaku Gothic ProN, sans-serif;
         }
 
-        .timetable {
-            height: 200px;
-
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            border: 1px solid var(--border);
-        }
-
-        .timetable > .title {
-            width: 100%;
-
+        .timetable-title {
             background-color: var(--border);
             font-weight: bold;
-            text-align: center;
+            padding: 0.25em;
         }
 
-        .timetable > .list {
-            width: 100%;
+        .timetable-table {
+            height: 200px;
 
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            border: 1px solid var(--border);
+            border-top: none;
             overflow-y: auto;
+        }
 
-            font-size: 1.25em;
+        .timetable-item {
+            display: flex;
+            align-items: center;
+
+            padding: 0.25em;
         }
     </style>
 </head>
+
 <body>
     <div id="content"></div>
     <script>
         onload = async () => {
             const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwafFs2y7IvfL2OkU_-Z7PfQJGwfYjxxptibbApEtGJjL5BFDPVqAUhKxvXUJ7stle_mw/exec";
 
-            const strTime = time => Math.floor(time / 60) + ":" + ("0" + time % 60).slice(-2);
+            const strTime = (time, type) => {
+                const h = Math.floor(time / 60);
+                const m = time % 60;
+
+                if (type === "interval") {
+                    if (h > 0) return `${h}時間${m}分`;
+                    else return `${m}分`;
+                }
+                else {
+                    return ("0" + h).slice(-2) + ":" + ("0" + m).slice(-2);
+                }
+            };
             const seekRoutes = (nodeList, depName, arrName) => {
                 const routes = [];
                 const depNode = nodeList.find(node => node.name === depName);
@@ -120,9 +125,9 @@
                 const seqList = route[firstTimedIndex].edge.depArrTimeList.map(
                     ([depTime, arrTime]) => route.map(
                         (node, i) => (
-                            i === firstTimedIndex ? {...node, depTime}
-                            : i === firstTimedIndex + 1 ? {...node, arrTime}
-                            : {...node}
+                            i === firstTimedIndex ? { ...node, depTime }
+                                : i === firstTimedIndex + 1 ? { ...node, arrTime }
+                                    : { ...node }
                         )
                     )
                 );
@@ -142,7 +147,7 @@
                                 ([depTime, _]) => seq[i].arrTime + margin <= depTime
                             );
                             if (!depArrTime) return;
-                            
+
                             [seq[i].depTime, seq[i + 1].arrTime] = depArrTime;
                         }
                     }
@@ -150,7 +155,7 @@
 
                 return seqList.filter(seq => {
                     if (seq.slice(-1)[0].arrTime === undefined) return false;
-                    
+
                     return !seqList.some(seq2 => (
                         seq.slice(-1)[0].arrTime === seq2.slice(-1)[0].arrTime
                         && seq[0].depTime < seq2[0].depTime
@@ -176,8 +181,8 @@
                         arrName: "八木山神社前",
                     },
                 ];
-                
-                depArrList.forEach(({depName, arrName}) => {
+
+                depArrList.forEach(({ depName, arrName }) => {
                     const routes = seekRoutes(nodeList, depName, arrName);
                     const allSeqList = routes.map(route => routeToSeqList(route)).flat();
                     console.log(allSeqList);
@@ -186,12 +191,11 @@
 
                     const div = document.createElement("div");
 
-                    div.classList.add("timetable");
                     div.append(
                         (() => {
                             const div = document.createElement("div");
 
-                            div.classList.add("title");
+                            div.classList.add("timetable-title");
                             div.textContent = depName + " ⇒ " + arrName;
 
                             return div;
@@ -199,13 +203,33 @@
                         (() => {
                             const div = document.createElement("div");
 
-                            div.classList.add("list");
+                            div.classList.add("timetable-table");
                             div.append(...allSeqList.map(seq => {
-                                const span = document.createElement("span");
+                                const div = document.createElement("div");
 
-                                span.innerHTML = `<b>${strTime(seq[0].depTime)}</b><small>発</small> → <b>${strTime(seq.slice(-1)[0].arrTime)}</b><small>着</small>`;
+                                div.classList.add("timetable-item");
+                                div.append(
+                                    (() => {
+                                        const div = document.createElement("div");
 
-                                return span;
+                                        div.style = `
+                                            white-space: nowrap;
+                                        `
+                                        const [depTime, arrTime] = [seq[0].depTime, seq.slice(-1)[0].arrTime];
+                                        div.innerHTML = `<big><b>${strTime(depTime)}</b></big>発 → <big><b>${strTime(arrTime)}</b></big>着 (${strTime(arrTime - depTime, "interval")})`;
+
+                                        return div;
+                                    })(),
+                                    (() => {
+                                        const div = document.createElement("div");
+
+                                        div.innerHTML = seq.filter(node => node.edge).map(node => node.edge.shortName || node.edge.name).join(", ").small().small();
+
+                                        return div;
+                                    })(),
+                                );
+
+                                return div;
                             }));
 
                             return div;
@@ -225,6 +249,7 @@
                             "edges": [
                                 {
                                     "name": "J701/J704/J706〔八木山動物公園-交通局東北大病院〕[仙台市営バス]",
+                                    "shortName": "仙台市営バス",
                                     "url": "https://www.navitime.co.jp/bus/diagram/timelist?departure=00144827&arrival=00144353&line=00033098",
                                     "depArrTimeList": [
                                         [
@@ -423,6 +448,7 @@
                                 },
                                 {
                                     "name": "K601他〔八木山動物公園駅-交通局東北大学病院〕[仙台市営バス]",
+                                    "shortName": "仙台市営バス",
                                     "url": "https://www.navitime.co.jp/bus/diagram/timelist?departure=00144827&arrival=00144353&line=00033089",
                                     "depArrTimeList": [
                                         [
@@ -473,6 +499,7 @@
                                 },
                                 {
                                     "name": "S601他〔八木山動物公園駅-仙台駅前〕[仙台市営バス]",
+                                    "shortName": "仙台市営バス",
                                     "url": "https://www.navitime.co.jp/bus/diagram/timelist?departure=00144827&arrival=00144353&line=00033090",
                                     "depArrTimeList": [
                                         [
@@ -523,6 +550,7 @@
                                 },
                                 {
                                     "name": "36〔長町四丁目長町営業所-日赤病院〕[仙台市営バス]",
+                                    "shortName": "仙台市営バス",
                                     "url": "https://www.navitime.co.jp/bus/diagram/timelist?departure=00144827&arrival=00144353&line=00032943",
                                     "depArrTimeList": [
                                         [
@@ -541,6 +569,7 @@
                                 },
                                 {
                                     "name": "太白八木山線[宮城交通]",
+                                    "shortName": "宮城交通バス",
                                     "url": "https://www.navitime.co.jp/bus/diagram/timelist?departure=00144827&arrival=00144353&line=00072451",
                                     "depArrTimeList": [
                                         [
@@ -575,6 +604,7 @@
                                 },
                                 {
                                     "name": "八木山動物公園線[宮城交通]",
+                                    "shortName": "宮城交通バス",
                                     "url": "https://www.navitime.co.jp/bus/diagram/timelist?departure=00144827&arrival=00144353&line=00072461",
                                     "depArrTimeList": [
                                         [
@@ -646,6 +676,7 @@
                             "edges": [
                                 {
                                     "name": "10〔八木山動物公園駅-青葉台〕[仙台市営バス]",
+                                    "shortName": "仙台市営バス",
                                     "url": "https://www.navitime.co.jp/bus/diagram/timelist?departure=00144827&arrival=00144422&line=00032888",
                                     "depArrTimeList": [
                                         [
@@ -731,6 +762,7 @@
                             "edges": [
                                 {
                                     "name": "701/704/706〔交通局東北大学病院-八木山動物公園〕[仙台市営バス]",
+                                    "shortName": "仙台市営バス",
                                     "url": "https://www.navitime.co.jp/bus/diagram/timelist?departure=00144353&arrival=00144827&line=00033097",
                                     "depArrTimeList": [
                                         [
@@ -929,6 +961,7 @@
                                 },
                                 {
                                     "name": "601〔交通局東北大学病院-八木山動物公園駅〕[仙台市営バス]",
+                                    "shortName": "仙台市営バス",
                                     "url": "https://www.navitime.co.jp/bus/diagram/timelist?departure=00144353&arrival=00144827&line=00033088",
                                     "depArrTimeList": [
                                         [
@@ -1019,6 +1052,7 @@
                                 },
                                 {
                                     "name": "36〔長町四丁目長町営業所-日赤病院〕[仙台市営バス]",
+                                    "shortName": "仙台市営バス",
                                     "url": "https://www.navitime.co.jp/bus/diagram/timelist?departure=00144353&arrival=00144827&line=00032943",
                                     "depArrTimeList": [
                                         [
@@ -1037,6 +1071,7 @@
                                 },
                                 {
                                     "name": "太白八木山線[宮城交通]",
+                                    "shortName": "宮城交通バス",
                                     "url": "https://www.navitime.co.jp/bus/diagram/timelist?departure=00144353&arrival=00144827&line=00072451",
                                     "depArrTimeList": [
                                         [
@@ -1071,6 +1106,7 @@
                                 },
                                 {
                                     "name": "八木山動物公園線[宮城交通]",
+                                    "shortName": "宮城交通バス",
                                     "url": "https://www.navitime.co.jp/bus/diagram/timelist?departure=00144353&arrival=00144827&line=00072461",
                                     "depArrTimeList": [
                                         [
@@ -1142,6 +1178,7 @@
                             "edges": [
                                 {
                                     "name": "701/704/706〔交通局東北大学病院-八木山動物公園〕[仙台市営バス]",
+                                    "shortName": "仙台市営バス",
                                     "url": "https://www.navitime.co.jp/bus/diagram/timelist?departure=00144353&arrival=00144828&line=00033097",
                                     "depArrTimeList": [
                                         [
@@ -1340,6 +1377,7 @@
                                 },
                                 {
                                     "name": "601〔交通局東北大学病院-八木山動物公園駅〕[仙台市営バス]",
+                                    "shortName": "仙台市営バス",
                                     "url": "https://www.navitime.co.jp/bus/diagram/timelist?departure=00144353&arrival=00144828&line=00033088",
                                     "depArrTimeList": [
                                         [
@@ -1430,6 +1468,7 @@
                                 },
                                 {
                                     "name": "36〔長町四丁目長町営業所-日赤病院〕[仙台市営バス]",
+                                    "shortName": "仙台市営バス",
                                     "url": "https://www.navitime.co.jp/bus/diagram/timelist?departure=00144353&arrival=00144828&line=00032943",
                                     "depArrTimeList": [
                                         [
@@ -1448,6 +1487,7 @@
                                 },
                                 {
                                     "name": "太白八木山線[宮城交通]",
+                                    "shortName": "宮城交通バス",
                                     "url": "https://www.navitime.co.jp/bus/diagram/timelist?departure=00144353&arrival=00144828&line=00072451",
                                     "depArrTimeList": [
                                         [
@@ -1482,6 +1522,7 @@
                                 },
                                 {
                                     "name": "八木山動物公園線[宮城交通]",
+                                    "shortName": "宮城交通バス",
                                     "url": "https://www.navitime.co.jp/bus/diagram/timelist?departure=00144353&arrival=00144828&line=00072461",
                                     "depArrTimeList": [
                                         [
@@ -1558,6 +1599,7 @@
                             "edges": [
                                 {
                                     "name": "J701/J704/J706〔八木山動物公園-交通局東北大病院〕[仙台市営バス]",
+                                    "shortName": "仙台市営バス",
                                     "url": "https://www.navitime.co.jp/bus/diagram/timelist?departure=00144828&arrival=00144353&line=00033098",
                                     "depArrTimeList": [
                                         [
@@ -1728,6 +1770,7 @@
                                 },
                                 {
                                     "name": "K601他〔八木山動物公園駅-交通局東北大学病院〕[仙台市営バス]",
+                                    "shortName": "仙台市営バス",
                                     "url": "https://www.navitime.co.jp/bus/diagram/timelist?departure=00144828&arrival=00144353&line=00033089",
                                     "depArrTimeList": [
                                         [
@@ -1770,6 +1813,7 @@
                                 },
                                 {
                                     "name": "S601他〔八木山動物公園駅-仙台駅前〕[仙台市営バス]",
+                                    "shortName": "仙台市営バス",
                                     "url": "https://www.navitime.co.jp/bus/diagram/timelist?departure=00144828&arrival=00144353&line=00033090",
                                     "depArrTimeList": [
                                         [
@@ -1812,6 +1856,7 @@
                                 },
                                 {
                                     "name": "36〔長町四丁目長町営業所-日赤病院〕[仙台市営バス]",
+                                    "shortName": "仙台市営バス",
                                     "url": "https://www.navitime.co.jp/bus/diagram/timelist?departure=00144828&arrival=00144353&line=00032943",
                                     "depArrTimeList": [
                                         [
@@ -1830,6 +1875,7 @@
                                 },
                                 {
                                     "name": "太白八木山線[宮城交通]",
+                                    "shortName": "宮城交通バス",
                                     "url": "https://www.navitime.co.jp/bus/diagram/timelist?departure=00144828&arrival=00144353&line=00072451",
                                     "depArrTimeList": [
                                         [
@@ -1864,6 +1910,7 @@
                                 },
                                 {
                                     "name": "八木山動物公園線[宮城交通]",
+                                    "shortName": "宮城交通バス",
                                     "url": "https://www.navitime.co.jp/bus/diagram/timelist?departure=00144828&arrival=00144353&line=00072461",
                                     "depArrTimeList": [
                                         [
@@ -1935,6 +1982,7 @@
                             "edges": [
                                 {
                                     "name": "10〔八木山動物公園駅-青葉台〕[仙台市営バス]",
+                                    "shortName": "仙台市営バス",
                                     "url": "https://www.navitime.co.jp/bus/diagram/timelist?departure=00144828&arrival=00144422&line=00032888",
                                     "depArrTimeList": [
                                         [
@@ -2011,6 +2059,7 @@
                             "edges": [
                                 {
                                     "name": "10〔八木山動物公園駅-青葉台〕[仙台市営バス]",
+                                    "shortName": "仙台市営バス",
                                     "url": "https://www.navitime.co.jp/bus/diagram/timelist?departure=00144422&arrival=00144827&line=00032888",
                                     "depArrTimeList": [
                                         [
@@ -2086,6 +2135,7 @@
                             "edges": [
                                 {
                                     "name": "10〔八木山動物公園駅-青葉台〕[仙台市営バス]",
+                                    "shortName": "仙台市営バス",
                                     "url": "https://www.navitime.co.jp/bus/diagram/timelist?departure=00144422&arrival=00144828&line=00032888",
                                     "depArrTimeList": [
                                         [
@@ -3319,7 +3369,7 @@
                         }
                     ]
                 }
-            ]
+            ];
             
             display(nodeList);
 
