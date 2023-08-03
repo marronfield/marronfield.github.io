@@ -225,7 +225,7 @@
                                         `;
                                         div.innerHTML = `
                                             ${strTime(seq[0].depTime).big().big().bold()}発 → 
-                                            ${strTime(seq[0].depTime).big().big().bold()}着
+                                            ${strTime(seq.slice(-1)[0].arrTime).big().big().bold()}着
                                              (${strTime(seq.slice(-1)[0].arrTime - seq[0].depTime, "interval")})
                                         `;
 
