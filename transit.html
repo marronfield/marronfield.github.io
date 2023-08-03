@@ -48,11 +48,12 @@
             gap: 10px;
             padding: 10px;
 
-            font-family: Helvetica, Hiragino Kaku Gothic ProN, sans-serif;
+            font-family: Helvetica, sans-serif;
         }
 
         .timetable-title {
             background-color: var(--border);
+            border-radius: 5px 5px 0 0;
             font-weight: bold;
             padding: 0.25em;
         }
@@ -61,6 +62,7 @@
             height: 200px;
 
             border: 1px solid var(--border);
+            border-radius: 0 0 5px 5px;
             border-top: none;
             overflow-y: auto;
         }
@@ -215,14 +217,21 @@
                                         div.style = `
                                             white-space: nowrap;
                                         `
-                                        const [depTime, arrTime] = [seq[0].depTime, seq.slice(-1)[0].arrTime];
-                                        div.innerHTML = `<big><b>${strTime(depTime)}</b></big>発 → <big><b>${strTime(arrTime)}</b></big>着 (${strTime(arrTime - depTime, "interval")})`;
+                                        div.innerHTML = `
+                                            <big><b>${strTime(seq[0].depTime)}</b></big>発 → 
+                                            <big><b>${strTime(seq.slice(-1)[0].arrTime)}</b></big>着
+                                             (${strTime(seq.slice(-1)[0].arrTime - seq[0].depTime, "interval")})
+                                        `;
 
                                         return div;
                                     })(),
                                     (() => {
                                         const div = document.createElement("div");
 
+                                        div.style = `
+                                            padding-left: 0.5em;
+                                            line-height: 0.8em;
+                                        `
                                         div.innerHTML = seq.filter(node => node.edge).map(node => node.edge.shortName || node.edge.name).join(", ").small().small();
 
                                         return div;
