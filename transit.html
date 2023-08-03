@@ -6,8 +6,6 @@
 
     <style>
         :root {
-            --weight: 600;
-
             --text: #333;
             --text-link: #1558d6;
             --text-link-active: #0f3f99;
@@ -31,6 +29,7 @@
             box-sizing: border-box;
             margin: 0;
             padding: 0;
+            position: relative;
         }
 
         body {
@@ -59,7 +58,7 @@
         }
 
         .timetable-table {
-            height: 200px;
+            height: 12.5em;
 
             border: 1px solid var(--border);
             border-radius: 0 0 5px 5px;
@@ -69,24 +68,59 @@
         }
 
         .timetable-item {
+            border-top: 1px solid var(--border);
 
             display: flex;
             align-items: center;
-            border-top: 1px solid var(--border);
             padding: 0.25em;
         }
 
         .timetable-item:first-child{
             border-top: none;
         }
+
+        .add-button {
+            height: 2em;
+
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            
+            display: grid;
+            place-items: center;
+        }
+
+        .pointer {
+            cursor: pointer;
+        }
     </style>
 </head>
 
 <body>
     <div id="content"></div>
+
     <script>
         onload = async () => {
             const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwafFs2y7IvfL2OkU_-Z7PfQJGwfYjxxptibbApEtGJjL5BFDPVqAUhKxvXUJ7stle_mw/exec";
+            const depArrList = JSON.parse(localStorage.getItem("depArrList") || "null") || [
+                {
+                    depName: "八木山神社前",
+                    arrName: "青葉山",
+                },
+                {
+                    depName: "青葉山",
+                    arrName: "八木山神社前",
+                },
+                {
+                    depName: "八木山神社前",
+                    arrName: "工学部中央",
+                },
+                {
+                    depName: "工学部中央",
+                    arrName: "八木山神社前",
+                },
+            ];
 
             const strTime = (time, type) => {
                 const h = Math.floor(time / 60);
@@ -161,40 +195,24 @@
                     }
                 });
 
-                return seqList.filter(seq => {
-                    if (seq.slice(-1)[0].arrTime === undefined) return false;
-
-                    return !seqList.some(seq2 => (
-                        seq.slice(-1)[0].arrTime === seq2.slice(-1)[0].arrTime
-                        && seq[0].depTime < seq2[0].depTime
-                    ));
-                });
+                return seqList.filter(seq => seq.slice(-1)[0].arrTime !== undefined);
             };
             const display = nodeList => {
-                const depArrList = JSON.parse(localStorage.getItem("depArrList") || "null") || [
-                    {
-                        depName: "八木山神社前",
-                        arrName: "青葉山",
-                    },
-                    {
-                        depName: "青葉山",
-                        arrName: "八木山神社前",
-                    },
-                    {
-                        depName: "八木山神社前",
-                        arrName: "工学部中央",
-                    },
-                    {
-                        depName: "工学部中央",
-                        arrName: "八木山神社前",
-                    },
-                ];
+                const content = document.getElementById("content");
 
-                depArrList.forEach(({ depName, arrName }) => {
+                depArrList.forEach(depArr => {
+                    const { depName, arrName } = depArr;
+
                     const routes = seekRoutes(nodeList, depName, arrName);
-                    const allSeqList = routes.map(route => routeToSeqList(route)).flat();
-                    console.log(allSeqList);
-
+                    const allSeqList0 = routes.map(route => routeToSeqList(route)).flat();
+                    const allSeqList = allSeqList0.filter(seq => !allSeqList0.some(seq2 => (
+                        seq[0].depTime <= seq2[0].depTime
+                        && seq.slice(-1)[0].arrTime >= seq2.slice(-1)[0].arrTime
+                        && !(
+                            seq[0].depTime === seq2[0].depTime
+                            && seq.slice(-1)[0].arrTime === seq2.slice(-1)[0].arrTime
+                        )
+                    )));
                     allSeqList.sort((seq1, seq2) => seq1[0].depTime - seq2[0].depTime);
 
                     const div = document.createElement("div");
@@ -248,11 +266,46 @@
                             }));
 
                             return div;
+                        })(),
+                        (() => {
+                            const delIcon = document.createElement("div");
+
+                            delIcon.style = `
+                                position: absolute;
+                                right: 5px;
+                                top: -2px;
+
+                                font-size: 2em;
+                            `;
+                            delIcon.classList.add("pointer");
+                            delIcon.textContent = "×";
+                            delIcon.onclick = () => {
+                                if (confirm("削除しますか？")) {
+                                    div.remove();
+                                    depArrList.splice(depArrList.indexOf(depArr), 1);
+
+                                    localStorage.setItem("depArrList", JSON.stringify(depArrList));
+                                }
+                            };
+
+                            return delIcon;
                         })()
                     );
 
-                    document.getElementById("content").append(div);
+                    content.append(div);
                 });
+
+                content.append((() => {
+                    const div = document.createElement("div");
+
+                    div.classList.add("add-button");
+                    div.textContent = "+ 追加";
+                    div.onclick = () => {
+                        alert("準備中です");
+                    };
+
+                    return div;
+                })());
             };
 
             const nodeList = [
