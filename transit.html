@@ -73,8 +73,6 @@
             display: flex;
             align-items: center;
             padding: 0.25em;
-
-            -webkit-tap-highlight-color: #0f3f99;
         }
 
         .timetable-item:first-child{
@@ -92,8 +90,12 @@
             place-items: center;
         }
 
-        .pointer {
+        .button {
             cursor: pointer;
+        }
+
+        .button:active {
+            background-color: var(--shadow);
         }
     </style>
 </head>
@@ -235,7 +237,7 @@
                             div.append(...allSeqList.map(seq => {
                                 const div = document.createElement("div");
 
-                                div.classList.add("timetable-item", "pointer");
+                                div.classList.add("timetable-item", "button");
                                 div.append(
                                     (() => {
                                         const div = document.createElement("div");
@@ -303,7 +305,7 @@
 
                                 font-size: 2em;
                             `;
-                            delIcon.classList.add("pointer");
+                            delIcon.classList.add("button");
                             delIcon.textContent = "×";
                             delIcon.onclick = () => {
                                 if (confirm(`"${depName} ⇒ ${arrName}"\nを削除しますか？`)) {
@@ -324,7 +326,7 @@
                 content.append((() => {
                     const div = document.createElement("div");
 
-                    div.classList.add("add-button", "pointer");
+                    div.classList.add("add-button", "button");
                     div.textContent = "+ 追加";
                     div.onclick = () => {
                         alert("準備中です");
