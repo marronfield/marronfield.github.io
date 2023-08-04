@@ -203,15 +203,16 @@
                     const { depName, arrName } = depArr;
 
                     const routes = seekRoutes(nodeList, depName, arrName);
-                    const allSeqList0 = routes.map(route => routeToSeqList(route)).flat();
-                    const allSeqList = allSeqList0.filter(seq => !allSeqList0.some(seq2 => (
-                        seq[0].depTime <= seq2[0].depTime
-                        && seq.slice(-1)[0].arrTime >= seq2.slice(-1)[0].arrTime
-                        && !(
-                            seq[0].depTime === seq2[0].depTime
-                            && seq.slice(-1)[0].arrTime === seq2.slice(-1)[0].arrTime
+                    const allSeqList = routes.map(route => routeToSeqList(route)).flat().filter(
+                        (seq, _, allSeqList) => !allSeqList.some(seq2 => (
+                            seq[0].depTime <= seq2[0].depTime
+                            && seq.slice(-1)[0].arrTime >= seq2.slice(-1)[0].arrTime
+                            && !(
+                                seq[0].depTime === seq2[0].depTime
+                                && seq.slice(-1)[0].arrTime === seq2.slice(-1)[0].arrTime
+                            )
                         )
-                    )));
+                    ));
                     allSeqList.sort((seq1, seq2) => seq1[0].depTime - seq2[0].depTime);
 
                     const div = document.createElement("div");
@@ -279,6 +280,7 @@
 
                                     if (nextIndex !== -1) div.scrollTo({
                                         top: div.children[nextIndex].offsetTop - (div.offsetHeight - div.children[nextIndex].offsetHeight) / 2,
+                                        behavior: "smooth",
                                     });
 
                                     prevIndex = nextIndex;
