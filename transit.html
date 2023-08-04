@@ -50,6 +50,26 @@
             font-family: Helvetica, sans-serif;
         }
 
+        #modal-bg {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100vh;
+
+            display: grid;
+            place-items: center;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        #modal {
+            width: calc(min(100%, 400px) - 4em);
+            max-height: calc(100% - 4em);
+
+            background-color: var(--background);
+            border-radius: 5px;
+        }
+
         .timetable-title {
             background-color: var(--border);
             border-radius: 5px 5px 0 0;
@@ -94,21 +114,34 @@
             cursor: pointer;
         }
 
-        .button:focus {
-            background-color: blue;
-        }
-
         .button:active {
             background-color: var(--shadow);
+        }
+
+        .hidden {
+            display: none !important;
         }
     </style>
 </head>
 
 <body ontouchstart>
     <div id="content"></div>
+    <div id="modal-bg" class="hidden">
+        <div id="modal"></div>
+    </div>
 
     <script>
         onload = async () => {
+            const content = document.getElementById("content");
+            const modalBg = document.getElementById("modal-bg");
+            const modal = document.getElementById("modal");
+            modalBg.onclick = e => {
+                if (e.target === modalBg) {
+                    while (modal.firstChild) modal.firstChild.remove();
+                    modalBg.classList.add("hidden");
+                }
+            }
+
             const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwafFs2y7IvfL2OkU_-Z7PfQJGwfYjxxptibbApEtGJjL5BFDPVqAUhKxvXUJ7stle_mw/exec";
             const depArrList = JSON.parse(localStorage.getItem("depArrList") || "null") || [
                 {
@@ -205,8 +238,6 @@
                 return seqList.filter(seq => seq.slice(-1)[0].arrTime !== undefined);
             };
             const display = nodeList => {
-                const content = document.getElementById("content");
-
                 depArrList.forEach(depArr => {
                     const { depName, arrName } = depArr;
 
@@ -269,6 +300,10 @@
                                         return div;
                                     })(),
                                 );
+                                div.onclick = () => {
+                                    modalBg.classList.remove("hidden");
+                                    modal.innerHTML = "<p>test</p>";
+                                };
 
                                 return div;
                             }));
