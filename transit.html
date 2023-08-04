@@ -40,6 +40,14 @@
             display: grid;
             place-items: center;
         }
+        
+        a {
+            color: var(--text-link);
+        }
+
+        a:active {
+            color: var(--text-link-active);
+        }
 
         input[type="text"], input[type="radio"], input[type="checkbox"], select, button {
             margin: 0.25em;
@@ -326,7 +334,121 @@
                                 );
                                 div.onclick = () => {
                                     modalBg.classList.remove("hidden");
-                                    modal.innerHTML = "<p>test</p>";
+
+                                    modal.append((() => {
+                                        const div = document.createElement("div");
+
+                                        div.style.marginBottom = "0.5em";
+                                        div.innerHTML = `
+                                            ${strTime(seq[0].depTime).big().big().bold()}発 → 
+                                            ${strTime(seq.slice(-1)[0].arrTime).big().big().bold()}着
+                                             (${strTime(seq.slice(-1)[0].arrTime - seq[0].depTime, "interval")})
+                                        `;
+
+                                        return div;
+                                    })())
+
+                                    seq.forEach((node, index) => {
+                                        modal.append((() => {
+                                            const div = document.createElement("div");
+
+                                            div.style = `
+                                                width: 100%;
+
+                                                display: flex;
+                                                align-items: center;
+                                            `;
+                                            div.append(
+                                                (() => {
+                                                    const div = document.createElement("div");
+
+                                                    if (node.arrTime && !node.depTime) {
+                                                        div.innerHTML = (strTime(node.arrTime) + "着").small();
+                                                    }
+                                                    div.innerHTML = (
+                                                        (
+                                                            node.arrTime ? strTime(node.arrTime) + "着"
+                                                            : ""
+                                                        )
+                                                        + (
+                                                            node.depTime && node.arrTime ? "<br>"
+                                                            : ""
+                                                        )
+                                                        + (
+                                                            node.depTime ? strTime(node.depTime) + "発"
+                                                            : ""
+                                                        )
+                                                    ).small();
+
+                                                    return div;
+                                                })(),
+                                                (() => {
+                                                    const div = document.createElement("div");
+
+                                                    div.style.marginLeft = "0.5em";
+                                                    div.innerHTML = node.name.bold();
+
+                                                    return div;
+                                                })(),
+                                            );
+
+                                            return div;
+                                        })());
+
+                                        if (node.edge) modal.append((() => {
+                                            const div = document.createElement("div");
+
+                                            div.style = `
+                                                width: 100%;
+                                                margin-left: 2em;
+
+                                                border-left: 2px solid var(--border);
+                                                padding: 0.5em;
+
+                                                display: flex;
+                                                align-items: center;
+                                            `;
+                                            div.append(
+                                                (() => {
+                                                    const div = document.createElement("div");
+
+                                                    div.style = `
+                                                        white-space: nowrap;
+                                                    `;
+                                                    div.innerHTML = strTime(seq[index + 1].arrTime - node.depTime, "interval").small();
+
+                                                    return div;
+                                                })(),
+                                                (() => {
+                                                    const div = document.createElement("div");
+
+                                                    div.style.marginLeft = "0.5em";
+                                                    div.append((() => {
+                                                        const span = document.createElement("span");
+
+                                                        span.textContent = node.edge.name;
+
+                                                        return span;
+                                                    })());
+                                                    if (node.edge.url) div.append((() => {
+                                                        const a = document.createElement("a");
+
+                                                        a.style.marginLeft = "0.5em";
+                                                        a.href = node.edge.url;
+                                                        a.target = "_blank";
+                                                        a.rel = "noopener noreferrer";
+                                                        a.textContent = "時刻表(navitime)";
+
+                                                        return a;
+                                                    })());
+
+                                                    return div;
+                                                })(),
+                                            );
+
+                                            return div;
+                                        })());
+                                    });
                                 };
 
                                 return div;
