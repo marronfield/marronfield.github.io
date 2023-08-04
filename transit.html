@@ -40,6 +40,22 @@
             place-items: center;
         }
 
+        input[type="text"], input[type="radio"], input[type="checkbox"], select, button {
+            margin: 0.25em;
+
+            background-color: var(--background);
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            color: var(--text);
+            font-size: 1em;
+            padding: 0.4em;
+        }
+
+        button {
+            background-color: var(--border);
+            padding: 0.4em 2em;
+        }
+
         #content {
             width: min(100%, 400px);
 
@@ -63,11 +79,17 @@
         }
 
         #modal {
-            width: calc(min(100%, 400px) - 4em);
-            max-height: calc(100% - 4em);
+            width: calc(min(100%, 400px) - 50px);
+            max-height: calc(100% - 50px);
 
             background-color: var(--background);
             border-radius: 5px;
+            box-shadow: 0 0 5px var(--shadow);
+            padding: 10px;
+
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         .timetable-title {
@@ -135,11 +157,12 @@
             const content = document.getElementById("content");
             const modalBg = document.getElementById("modal-bg");
             const modal = document.getElementById("modal");
+            const closeModal = () => {
+                while (modal.firstChild) modal.firstChild.remove();
+                modalBg.classList.add("hidden");
+            }
             modalBg.onclick = e => {
-                if (e.target === modalBg) {
-                    while (modal.firstChild) modal.firstChild.remove();
-                    modalBg.classList.add("hidden");
-                }
+                if (e.target === modalBg) closeModal();
             }
 
             const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwafFs2y7IvfL2OkU_-Z7PfQJGwfYjxxptibbApEtGJjL5BFDPVqAUhKxvXUJ7stle_mw/exec";
@@ -238,6 +261,8 @@
                 return seqList.filter(seq => seq.slice(-1)[0].arrTime !== undefined);
             };
             const display = nodeList => {
+                while (content.firstChild) content.firstChild.remove();
+
                 depArrList.forEach(depArr => {
                     const { depName, arrName } = depArr;
 
@@ -350,7 +375,6 @@
                                 if (confirm(`"${depName} ⇒ ${arrName}"\nを削除しますか？`)) {
                                     div.remove();
                                     depArrList.splice(depArrList.indexOf(depArr), 1);
-
                                     localStorage.setItem("depArrList", JSON.stringify(depArrList));
                                 }
                             };
@@ -366,9 +390,56 @@
                     const div = document.createElement("div");
 
                     div.classList.add("add-button", "button");
-                    div.textContent = "+ 追加";
+                    div.textContent = "＋ 追加";
                     div.onclick = () => {
-                        alert("準備中です");
+                        modalBg.classList.remove("hidden");
+
+                        const [depSelect, arrSelect] = ["出発地", "目的地"].map((text, index) => {
+                            const div = document.createElement("div");
+                            
+                            const span = document.createElement("span");
+                            span.textContent = text;
+
+                            const select = document.createElement("select");
+                            select.append(...nodeList.map(node => {
+                                const option = document.createElement("option");
+
+                                option.textContent = node.name;
+
+                                return option;
+                            }));
+                            select.selectedIndex = index;
+
+                            div.append(span, select);
+                            modal.append(div);
+
+                            return select;
+                        });
+
+                        let depName, arrName;
+                        const onchange = () => {
+                            if (depSelect.value === arrSelect.value) {
+                                [depSelect.value, arrSelect.value] = [arrName, depName];
+                                [depName, arrName] = [arrName, depName];
+                            }
+                            else {
+                                [depName, arrName] = [depSelect.value, arrSelect.value];
+                            }
+                        }
+                        onchange();
+                        depSelect.onchange = onchange;
+                        arrSelect.onchange = onchange;
+
+                        const button = document.createElement("button");
+                        button.classList.add("button");
+                        button.textContent = "追加";
+                        button.onclick = () => {
+                            depArrList.push({ depName, arrName });
+                            localStorage.setItem("depArrList", JSON.stringify(depArrList));
+                            closeModal();
+                            display(nodeList);
+                        }
+                        modal.append(button);
                     };
 
                     return div;
