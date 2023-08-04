@@ -362,9 +362,7 @@
                                                 (() => {
                                                     const div = document.createElement("div");
 
-                                                    if (node.arrTime && !node.depTime) {
-                                                        div.innerHTML = (strTime(node.arrTime) + "着").small();
-                                                    }
+                                                    div.style.lineHeight = "1em";
                                                     div.innerHTML = (
                                                         (
                                                             node.arrTime ? strTime(node.arrTime) + "着"
