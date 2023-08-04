@@ -84,7 +84,6 @@
 
             border: 1px solid var(--border);
             border-radius: 5px;
-            cursor: pointer;
             font-weight: bold;
             
             display: grid;
@@ -233,7 +232,7 @@
                             div.append(...allSeqList.map(seq => {
                                 const div = document.createElement("div");
 
-                                div.classList.add("timetable-item");
+                                div.classList.add("timetable-item", "pointer");
                                 div.append(
                                     (() => {
                                         const div = document.createElement("div");
@@ -265,6 +264,29 @@
                                 return div;
                             }));
 
+                            let prevIndex;
+                            const refreshState = () => {
+                                const date = new Date();
+                                const currentTime = 60 * date.getHours() + date.getMinutes();
+                                const nextIndex = allSeqList.findIndex(seq => seq[0].depTime >= currentTime);
+
+                                if (nextIndex !== prevIndex) {
+                                    Array.from(div.children).forEach((div, i) => {
+                                        if (i < nextIndex || nextIndex === -1) {
+                                            div.style.color = "var(--border)";
+                                        }
+                                    });
+
+                                    if (nextIndex !== -1) div.scrollTo({
+                                        top: div.children[nextIndex].offsetTop - (div.offsetHeight - div.children[nextIndex].offsetHeight) / 2,
+                                    });
+
+                                    prevIndex = nextIndex;
+                                }
+                            }
+                            setTimeout(refreshState, 0);
+                            setInterval(refreshState, 1000);
+
                             return div;
                         })(),
                         (() => {
@@ -280,7 +302,7 @@
                             delIcon.classList.add("pointer");
                             delIcon.textContent = "×";
                             delIcon.onclick = () => {
-                                if (confirm("削除しますか？")) {
+                                if (confirm(`"${depName} ⇒ ${arrName}"\nを削除しますか？`)) {
                                     div.remove();
                                     depArrList.splice(depArrList.indexOf(depArr), 1);
 
@@ -298,7 +320,7 @@
                 content.append((() => {
                     const div = document.createElement("div");
 
-                    div.classList.add("add-button");
+                    div.classList.add("add-button", "pointer");
                     div.textContent = "+ 追加";
                     div.onclick = () => {
                         alert("準備中です");
