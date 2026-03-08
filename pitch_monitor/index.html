@@ -106,7 +106,7 @@
                 for (let i = 0; i < outputBins; i++) {
                     const logf = logfmin + (logfmax - logfmin) * i / (outputBins - 1);
                     const f = Math.exp(logf);
-                    const pos = f / fmax * (inputBins - 1);
+                    const pos = (f - fmin) / (fmax - fmin) * (inputBins - 1);
                     const i0 = Math.floor(pos);
                     const i1 = Math.min(i0 + 1, inputBins - 1);
 
