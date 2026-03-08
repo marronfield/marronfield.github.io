@@ -15,7 +15,7 @@
 
         :root {
             user-select: none;
-            
+
             --text: #333;
             --text-secondary: #666;
             --text-link: #1a0dab;
@@ -91,10 +91,11 @@
                 this.createLookupTables(fftSize, sampleRate, outputBins);
             }
 
-            createLookupTables(fftSize, sampleRate, outputBins) {
+            createLookupTables(fftSize, sampleRate, { outputBins, fmin, fmax } = {}) {
+                outputBins ??= fftSize / 2;
+                fmin ??= sampleRate / fftSize;
+                fmax ??= sampleRate / 2;
                 const inputBins = fftSize / 2;
-                const fmin = sampleRate / fftSize;
-                const fmax = sampleRate / 2;
                 const logfmin = Math.log(fmin);
                 const logfmax = Math.log(fmax);
 
@@ -129,19 +130,19 @@
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
         const spectrumAnalyser = new class {
-            bins = 256;
+            bins = 88;
 
             constructor() {
                 this.source = new MediaStreamAudioSourceNode(audioCtx, { mediaStream: stream });
                 this.analyser = new AnalyserNode(audioCtx, { smoothingTimeConstant: 0 });
                 this.dataArray = new Uint8Array(this.analyser.frequencyBinCount);
                 this.logDataArray = new Uint8Array(this.bins);
-                this.converter = new LogConverter(this.analyser.fftSize, audioCtx.sampleRate, this.bins);
+                this.converter = new LogConverter(this.analyser.fftSize, audioCtx.sampleRate, { outputBins: this.bins, fmim: 440 / 2**4, fmax: 440 * 2**(39/12) });
 
                 this.source.connect(this.analyser);
 
                 this.elem = createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "space-evenly" }});
-                this.bars = Array.from({ length: this.bins }, () => createElement("div", { style: { width: "1px", background: "white" }}));
+                this.bars = Array.from({ length: this.bins }, () => createElement("div", { style: { width: "8px", background: "white" }}));
                 this.elem.append(...this.bars);
                 document.body.append(this.elem);
 
