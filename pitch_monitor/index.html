@@ -146,7 +146,7 @@
 
                 this.elem = createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "space-evenly" }});
                 this.bars = Array.from({ length: this.bins }, () => createElement("div", { style: { width: "8px", background: "white" }}));
-                this.status = createElement("div", { style: { position: "absolute", left: 0, top: 0 }});
+                this.status = createElement("div", { style: { position: "absolute", left: 0, top: 0, fontFamily: "mono" }});
                 this.elem.append(...this.bars);
                 document.body.append(this.elem, this.status);
 
