@@ -142,8 +142,8 @@
             prev = new Date();
 
             constructor() {
-                this.source = new MediaStreamAudioSourceNode(audioCtx, { fftSize: 4096, mediaStream: stream });
-                this.analyser = new AnalyserNode(audioCtx, { maxDecibels: 0, smoothingTimeConstant: 0 });
+                this.source = new MediaStreamAudioSourceNode(audioCtx, { mediaStream: stream });
+                this.analyser = new AnalyserNode(audioCtx, { fftSize: 4096, maxDecibels: 0, smoothingTimeConstant: 0 });
                 this.dataArray = new Float32Array(this.analyser.frequencyBinCount);
                 this.logDataArray = new Float32Array(this.bins);
                 this.converter = new LogConverter(this.analyser.fftSize, audioCtx.sampleRate, { outputBins: this.bins, fmin: 440 * 2**-4, fmax: 440 * 2**(39/12) });
