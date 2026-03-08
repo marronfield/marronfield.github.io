@@ -322,6 +322,7 @@
                         microphone.connect(this.node);
                     });
 
+                    infoArea.setText("-- Hz");
                     visualiser.setData(new Uint8Array(visualiser.bins));
                 }
 
@@ -342,7 +343,7 @@
             constructor() {
                 document.body.append(this.selector);
 
-                this.selector.value = "YIN";
+                this.selector.value = "FFT";
                 this.selector.onchange();
             }
 
