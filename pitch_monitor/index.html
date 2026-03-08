@@ -158,7 +158,7 @@
                 this.converter.convert(this.dataArray, this.logDataArray)
 
                 this.logDataArray.forEach((value, index) => {
-                    this.bars[index].style.height = (value + 100) + "%";
+                    this.bars[index].style.height = Math.max(0, value + 100) + "%";
                 });
 
                 const now = new Date();
