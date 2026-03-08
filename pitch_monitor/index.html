@@ -137,7 +137,7 @@
                 this.analyser = new AnalyserNode(audioCtx, { smoothingTimeConstant: 0 });
                 this.dataArray = new Uint8Array(this.analyser.frequencyBinCount);
                 this.logDataArray = new Uint8Array(this.bins);
-                this.converter = new LogConverter(this.analyser.fftSize, audioCtx.sampleRate, { outputBins: this.bins, fmim: 440 / 2**4, fmax: 440 * 2**(39/12) });
+                this.converter = new LogConverter(this.analyser.fftSize, audioCtx.sampleRate, { outputBins: this.bins, fmin: 440 * 2**-4, fmax: 440 * 2**(39/12) });
 
                 this.source.connect(this.analyser);
 
