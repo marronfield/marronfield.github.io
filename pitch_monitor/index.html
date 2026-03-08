@@ -102,29 +102,33 @@
                 const logfmin = Math.log(fmin);
                 const logfmax = Math.log(fmax);
 
-                this.index0 = new Uint16Array(outputBins);
-                this.index1 = new Uint16Array(outputBins);
+                this.index = new Uint16Array(outputBins);
                 this.weight = new Float32Array(outputBins);
 
                 for (let i = 0; i < outputBins; i++) {
                     const logf = logfmin + (logfmax - logfmin) * i / (outputBins - 1);
                     const f = Math.exp(logf);
-                    const pos = f / nyquist * (inputBins - 1);
+                    const pos = Math.max(1, Math.min(f / nyquist * (inputBins - 1), inputBins - 2));
                     const i0 = Math.floor(pos);
-                    const i1 = Math.min(i0 + 1, inputBins - 1);
 
-                    this.index0[i] = i0;
-                    this.index1[i] = i1;
+                    this.index[i] = i0;
                     this.weight[i] = pos - i0;
                 }
             }
 
             convert(input, output) {
                 for (let i = 0; i < output.length; i++) {
-                    const a = input[this.index0[i]];
-                    const b = input[this.index1[i]];
+                    const i0 = this.index[i];
+                    const w = this.weight[i];
 
-                    output[i] = a + (b - a) * this.weight[i];
+                    const y0 = input[i0];
+                    const ym1 = input[i0 - 1];
+                    const y1 = input[i0 + 1];
+
+                    const a = (y1 - ym1) / 2;
+                    const b = (y1 - 2 * y0 + ym1) / 2;
+
+                    output[i] = y0 + a * w + b * w**2;
                 }
             }
         };
