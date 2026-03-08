@@ -133,9 +133,10 @@
 
         const spectrumAnalyser = new class {
             bins = 88;
+            prev = new Date();
 
             constructor() {
-                this.source = new MediaStreamAudioSourceNode(audioCtx, { mediaStream: stream });
+                this.source = new MediaStreamAudioSourceNode(audioCtx, { fftSize: 4096, mediaStream: stream });
                 this.analyser = new AnalyserNode(audioCtx, { smoothingTimeConstant: 0 });
                 this.dataArray = new Uint8Array(this.analyser.frequencyBinCount);
                 this.logDataArray = new Uint8Array(this.bins);
@@ -145,8 +146,9 @@
 
                 this.elem = createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "space-evenly" }});
                 this.bars = Array.from({ length: this.bins }, () => createElement("div", { style: { width: "8px", background: "white" }}));
+                this.status = createElement("div", { style: { position: "absolute", left: 0, top: 0 }});
                 this.elem.append(...this.bars);
-                document.body.append(this.elem);
+                document.body.append(this.elem, this.status);
 
                 this.#tick();
             }
@@ -158,6 +160,11 @@
                 this.logDataArray.forEach((value, index) => {
                     this.bars[index].style.height = value / 255 * 100 + "%";
                 });
+
+                const now = new Date();
+                const sec = (now - this.prev) / 1000;
+                this.status.textContent = (1 / sec).toPrecision(3) + " fps";
+                this.prev = now;
 
                 requestAnimationFrame(() => this.#tick());
             }
