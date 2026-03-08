@@ -290,11 +290,15 @@
                     }
 
                     this.converter.convert(this.YINDataArray, this.logDataArray);
-                    for (let i = 0; i < this.logDataArray.length; i++) this.logDataArray[i] *= 10;
+                    for (let i = 0; i < this.logDataArray.length; i++) {
+                        if (this.logDataArray[i] > 0) this.logDataArray[i] = 0.2 / this.logDataArray[i];
+                    }
 
                     const dataArray = this.logDataArray;
-                    const minIndex = dataArray.reduce((minIndex, value, index) => 0 < value && (minIndex === -1 || value < dataArray[minIndex]) ? index : minIndex, -1);
-                    visualiser.setData(dataArray, minIndex);
+                    // const minIndex = dataArray.reduce((minIndex, value, index) => 0 < value && (minIndex === -1 || value < dataArray[minIndex]) ? index : minIndex, -1);
+                    // visualiser.setData(dataArray, minIndex);
+                    const maxIndex = dataArray.reduce((maxIndex, value, index) => value > dataArray[maxIndex] ? index : maxIndex, 0);
+                    visualiser.setData(dataArray, maxIndex);
 
                     this.requestID = requestAnimationFrame(() => this.update());
                 }
@@ -340,7 +344,7 @@
             constructor() {
                 document.body.append(this.selector);
 
-                this.selector.value = "FFT";
+                this.selector.value = "YIN";
                 this.selector.onchange();
             }
 
