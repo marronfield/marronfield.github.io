@@ -145,7 +145,7 @@
 
                 this.source.connect(this.analyser);
 
-                this.elem = createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "space-evenly" }});
+                this.elem = createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "space-evenly", pointerEvents: "none" }});
                 this.bars = Array.from({ length: this.bins }, () => createElement("div", { style: { width: `calc(100% / ${this.bins} - 2px)` }}));
                 this.status = createElement("div", { style: { position: "absolute", left: 0, top: 0, fontFamily: "mono" }});
                 this.elem.append(...this.bars);
