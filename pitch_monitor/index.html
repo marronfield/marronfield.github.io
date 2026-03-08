@@ -87,99 +87,272 @@
 
             return element;
         };
-        const LogConverter = class {
-            constructor(fftSize, sampleRate, outputBins) {
-                this.createLookupTables(fftSize, sampleRate, outputBins);
-            }
-
-            createLookupTables(fftSize, sampleRate, { outputBins, fmin, fmax } = {}) {
-                const inputBins = fftSize / 2;
-                const nyquist = sampleRate / 2;
-
-                outputBins ??= fftSize / 2;
-                fmin ??= sampleRate / fftSize;
-                fmax ??= sampleRate / 2;
-                const logfmin = Math.log(fmin);
-                const logfmax = Math.log(fmax);
-
-                this.index = new Uint16Array(outputBins);
-                this.weight = new Float32Array(outputBins);
-
-                for (let i = 0; i < outputBins; i++) {
-                    const logf = logfmin + (logfmax - logfmin) * i / (outputBins - 1);
-                    const f = Math.exp(logf);
-                    const pos = Math.max(1, Math.min(f / nyquist * (inputBins - 1), inputBins - 2));
-                    const i0 = Math.floor(pos);
-
-                    this.index[i] = i0;
-                    this.weight[i] = pos - i0;
-                }
-            }
-
-            convert(input, output) {
-                for (let i = 0; i < output.length; i++) {
-                    const i0 = this.index[i];
-                    const w = this.weight[i];
-
-                    const y0 = input[i0];
-                    const ym1 = input[i0 - 1];
-                    const y1 = input[i0 + 1];
-
-                    const a = (y1 - ym1) / 2;
-                    const b = (y1 - 2 * y0 + ym1) / 2;
-
-                    output[i] = y0 + a * w + b * w**2;
-                }
-            }
-        };
-
-        const audioCtx = new AudioContext();
+        
+        const audioContext = new AudioContext();
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const microphone = new MediaStreamAudioSourceNode(audioContext, { mediaStream: stream });
 
-        const spectrumAnalyser = new class {
+        const infoArea = new class {
+            elem = createElement("div", { style: { position: "absolute", left: 0, top: 0, fontFamily: "mono" }});
+
+            constructor() {
+                document.body.append(this.elem);
+            }
+
+            setText(text) {
+                this.elem.innerText = text;
+            }
+        }();
+        const visualiser = new class {
             bins = 88;
-            binNames = ["A0", "A#0", "B0", ...Array.from({ length: 7 }, (_, i) => ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"].map(name => name + (i+1))).flat(), "C8"];
+            noteFreqs = Float32Array.from({ length: 88 }, (_, index) => 440 * 2**((index - 48) / 12));
+            noteNames = ["A0", "A#0", "B0", ...Array.from({ length: 7 }, (_, i) => ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"].map(name => name + (i+1))).flat(), "C8"];
             prev = new Date();
 
             constructor() {
-                this.source = new MediaStreamAudioSourceNode(audioCtx, { mediaStream: stream });
-                this.analyser = new AnalyserNode(audioCtx, { fftSize: 4096, maxDecibels: 0, smoothingTimeConstant: 0 });
-                this.dataArray = new Float32Array(this.analyser.frequencyBinCount);
-                this.logDataArray = new Float32Array(this.bins);
-                this.converter = new LogConverter(this.analyser.fftSize, audioCtx.sampleRate, { outputBins: this.bins, fmin: 440 * 2**-4, fmax: 440 * 2**(39/12) });
-
-                this.source.connect(this.analyser);
-
                 this.elem = createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "space-evenly", pointerEvents: "none" }});
                 this.bars = Array.from({ length: this.bins }, () => createElement("div", { style: { width: `calc(100% / ${this.bins} * 0.5)` }}));
-                this.status = createElement("div", { style: { position: "absolute", left: 0, top: 0, fontFamily: "mono" }});
-                this.elem.append(...this.bars);
-                document.body.append(this.elem, this.status);
 
-                this.#tick();
+                this.elem.append(...this.bars);
+                document.body.append(this.elem);
             }
 
-            #tick() {
-                this.analyser.getFloatFrequencyData(this.dataArray);
-                this.converter.convert(this.dataArray, this.logDataArray)
-
-                let maxIndex = -1;
-                this.logDataArray.forEach((value, index) => {
-                    if (maxIndex === -1 || value> this.logDataArray[maxIndex]) maxIndex = index;
-
-                    this.bars[index].style.height = Math.max(0, value + 100) + "%";
-                    this.bars[index].style.background = "var(--border)";
+            setData(dataArray, highlightedIndex = -1) {
+                dataArray.forEach((value, index) => {
+                    this.bars[index].style.height = Math.max(0, value) + "%";
+                    this.bars[index].style.background = index === highlightedIndex ? "var(--text)" : "var(--border)";
                 });
-                this.bars[maxIndex].style.background = "var(--text)";
 
                 const now = new Date();
                 const sec = (now - this.prev) / 1000;
                 const fps = (1 / sec).toPrecision(3);
+                infoArea.setText(fps + " fps\n" + this.noteNames[highlightedIndex]);
+                
                 this.prev = now;
+            }
+        }();
 
-                this.status.innerText = fps + " fps\n" + this.binNames[maxIndex];
+        const processManger = new class {
+            FFTProcessor = class {
+                LogConverter = class {
+                    constructor(fftSize, sampleRate) {
+                        this.createLookupTables(fftSize, sampleRate);
+                    }
 
-                requestAnimationFrame(() => this.#tick());
+                    createLookupTables(fftSize, sampleRate) {
+                        const inputBins = fftSize / 2;
+                        const nyquist = sampleRate / 2;
+                        const outputBins = visualiser.bins;
+                        const fmin = visualiser.noteFreqs.at(0);
+                        const fmax = visualiser.noteFreqs.at(-1);
+                        const logfmin = Math.log(fmin);
+                        const logfmax = Math.log(fmax);
+
+                        this.index = new Uint16Array(outputBins);
+                        this.weight = new Float32Array(outputBins);
+
+                        for (let i = 0; i < outputBins; i++) {
+                            const logf = logfmin + (logfmax - logfmin) * i / (outputBins - 1);
+                            const f = Math.exp(logf);
+                            const pos = Math.max(1, Math.min(f / nyquist * (inputBins - 1), inputBins - 2));
+                            const i0 = Math.floor(pos);
+
+                            this.index[i] = i0;
+                            this.weight[i] = pos - i0;
+                        }
+                    }
+
+                    convert(input, output) {
+                        for (let i = 0; i < output.length; i++) {
+                            const i0 = this.index[i];
+                            const w = this.weight[i];
+
+                            const y0 = input[i0];
+                            const ym1 = input[i0 - 1];
+                            const y1 = input[i0 + 1];
+
+                            const a = (y1 - ym1) / 2;
+                            const b = (y1 - 2 * y0 + ym1) / 2;
+
+                            output[i] = y0 + a * w + b * w**2;
+                        }
+                    }
+                }
+                requestID = null;
+
+                constructor() {
+                    this.node = new AnalyserNode(audioContext, { fftSize: 4096, maxDecibels: 0, smoothingTimeConstant: 0 });
+                    this.dataArray = new Float32Array(this.node.frequencyBinCount);
+                    this.logDataArray = new Float32Array(visualiser.bins);
+                    this.converter = new this.LogConverter(this.node.fftSize, audioContext.sampleRate);
+                    
+                    microphone.connect(this.node);
+                    this.update();
+                }
+
+                stop() {
+                    cancelAnimationFrame(this.requestID);
+                    this.requestID = null;
+                }
+
+                update() {
+                    this.node.getFloatFrequencyData(this.dataArray);
+                    this.converter.convert(this.dataArray, this.logDataArray);
+                    for (let i = 0; i < this.logDataArray.length; i++) this.logDataArray[i] += 100;
+
+                    const dataArray = this.logDataArray;
+                    const maxIndex = dataArray.reduce((maxIndex, value, index) => value > dataArray[maxIndex] ? index : maxIndex, 0);
+                    visualiser.setData(dataArray, maxIndex);
+
+                    this.requestID = requestAnimationFrame(() => this.update());
+                }
+            };
+            YINProcessor = class {
+                LogConverter = class {
+                    constructor(fftSize, sampleRate) {
+                        this.createLookupTables(fftSize, sampleRate);
+                    }
+
+                    createLookupTables(fftSize, sampleRate) {
+                        const inputBins = fftSize / 2;
+                        const outputBins = visualiser.bins;
+                        const fmin = visualiser.noteFreqs.at(0);
+                        const fmax = visualiser.noteFreqs.at(-1);
+                        const logfmin = Math.log(fmin);
+                        const logfmax = Math.log(fmax);
+
+                        this.index = new Uint16Array(outputBins);
+                        this.weight = new Float32Array(outputBins);
+
+                        for (let i = 0; i < outputBins; i++) {
+                            const logf = logfmin + (logfmax - logfmin) * i / (outputBins - 1);
+                            const f = Math.exp(logf);
+                            const T = 1 / f;
+                            const pos = Math.max(1, Math.min(T * sampleRate, inputBins - 2));
+                            const i0 = Math.ceil(pos);
+
+                            this.index[i] = i0;
+                            this.weight[i] = pos - i0;
+                        }
+                    }
+
+                    convert(input, output) {
+                        for (let i = 0; i < output.length; i++) {
+                            const i0 = this.index[i];
+                            const w = this.weight[i];
+
+                            const y0 = input[i0];
+                            const ym1 = input[i0 - 1];
+                            const y1 = input[i0 + 1];
+
+                            const a = (y1 - ym1) / 2;
+                            const b = (y1 - 2 * y0 + ym1) / 2;
+
+                            output[i] = y0 + a * w + b * w**2;
+                        }
+                    }
+                };
+                requestID = null;
+
+                constructor() {
+                    this.node = new AnalyserNode(audioContext, { fftSize: 4096, maxDecibels: 0, smoothingTimeConstant: 0 });
+                    this.dataArray = new Float32Array(this.node.fftSize);
+                    this.YINDataArray = new Float32Array(this.node.fftSize / 2);
+                    this.logDataArray = new Float32Array(visualiser.bins);
+                    this.converter = new this.LogConverter(this.node.fftSize, audioContext.sampleRate);
+                    
+                    microphone.connect(this.node);
+                    this.update();
+                }
+
+                stop() {
+                    cancelAnimationFrame(this.requestID);
+                    this.requestID = null;
+                }
+
+                update() {
+                    this.node.getFloatTimeDomainData(this.dataArray);
+
+                    // 1. Difference Function
+                    for (let t = 0; t < this.YINDataArray.length / 2; t++) this.YINDataArray[t] = 0;
+                    for (let tau = 1; tau < this.YINDataArray.length / 2; tau++) {
+                        for (let i = 0; i < this.YINDataArray.length / 2; i++) {
+                            const delta = this.dataArray[i] - this.dataArray[i + tau];
+                            this.YINDataArray[tau] += delta * delta;
+                        }
+                    }
+                    // 2. Cumulative Mean Normalized Difference Function
+                    this.YINDataArray[0] = 1;
+                    let runningSum = 0;
+                    for (let tau = 1; tau < this.YINDataArray.length / 2; tau++) {
+                        runningSum += this.YINDataArray[tau];
+                        this.YINDataArray[tau] *= tau / runningSum;
+                    }
+
+                    this.converter.convert(this.YINDataArray, this.logDataArray);
+                    for (let i = 0; i < this.logDataArray.length; i++) this.logDataArray[i] *= 10;
+
+                    const dataArray = this.logDataArray;
+                    const minIndex = dataArray.reduce((minIndex, value, index) => 0 < value && (minIndex === -1 || value < dataArray[minIndex]) ? index : minIndex, -1);
+                    visualiser.setData(dataArray, minIndex);
+
+                    this.requestID = requestAnimationFrame(() => this.update());
+                }
+            };
+            YINProcessor2 = class {
+                dataArray;
+
+                constructor() {
+                    audioContext.audioWorklet.addModule("yin-processor.js").then(() => {
+                        this.node = new AudioWorkletNode(audioContext, "yin-processor");
+
+                        this.node.port.onmessage = event => {
+                            const pitch = event.data.pitch;
+
+                            if (pitch !== -1) {
+                                infoArea.setText(`ピッチ: ${pitch.toFixed(1)} Hz`);
+                            } else {
+                                infoArea.setText(`ピッチ: 未検出`);
+                            }
+                        };
+                        
+                        microphone.connect(this.node);
+                    });
+                }
+
+                stop() {
+                }
+
+                update() {
+                }
+            };
+
+            selector = createElement("select", {
+                style: { position: "absolute", right: 0, top: 0 },
+                onchange: () => this.onchange(),
+            }, ...[
+                createElement("option", null, "FFT"),
+                createElement("option", null, "YIN"),
+                createElement("option", null, "YIN2"),
+            ]);
+            runningProcessor;
+
+            constructor() {
+                document.body.append(this.selector);
+
+                this.selector.value = "FFT";
+                this.selector.onchange();
+            }
+
+            onchange() {
+                const Processor = { "FFT": this.FFTProcessor, "YIN": this.YINProcessor, "YIN2": this.YINProcessor2 }[this.selector.value];
+                if (!Processor) return;
+
+                if (this.runningProcessor) {
+                    this.runningProcessor.stop();
+                }
+
+                this.runningProcessor = new Processor();
             }
         }();
     })();
