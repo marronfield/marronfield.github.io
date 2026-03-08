@@ -272,19 +272,21 @@
 
                 update() {
                     this.node.getFloatTimeDomainData(this.dataArray);
+                    
+                    // 0. 初期化
+                    for (let t = 0; t < this.YINDataArray.length; t++) this.YINDataArray[t] = 0;
 
-                    // 1. Difference Function
-                    for (let t = 0; t < this.YINDataArray.length / 2; t++) this.YINDataArray[t] = 0;
-                    for (let tau = 1; tau < this.YINDataArray.length / 2; tau++) {
-                        for (let i = 0; i < this.YINDataArray.length / 2; i++) {
+                    // 1. 差分関数
+                    for (let tau = 1; tau < this.YINDataArray.length; tau++) {
+                        for (let i = 0; i < this.YINDataArray.length; i++) {
                             const delta = this.dataArray[i] - this.dataArray[i + tau];
                             this.YINDataArray[tau] += delta * delta;
                         }
                     }
-                    // 2. Cumulative Mean Normalized Difference Function
+                    // 2. 累積平均
                     this.YINDataArray[0] = 1;
                     let runningSum = 0;
-                    for (let tau = 1; tau < this.YINDataArray.length / 2; tau++) {
+                    for (let tau = 1; tau < this.YINDataArray.length; tau++) {
                         runningSum += this.YINDataArray[tau];
                         this.YINDataArray[tau] *= tau / runningSum;
                     }
@@ -295,8 +297,6 @@
                     }
 
                     const dataArray = this.logDataArray;
-                    // const minIndex = dataArray.reduce((minIndex, value, index) => 0 < value && (minIndex === -1 || value < dataArray[minIndex]) ? index : minIndex, -1);
-                    // visualiser.setData(dataArray, minIndex);
                     const maxIndex = dataArray.reduce((maxIndex, value, index) => value > dataArray[maxIndex] ? index : maxIndex, 0);
                     visualiser.setData(dataArray, maxIndex);
 
@@ -304,8 +304,6 @@
                 }
             };
             YINProcessor2 = class {
-                dataArray;
-
                 constructor() {
                     audioContext.audioWorklet.addModule("yin-processor.js").then(() => {
                         this.node = new AudioWorkletNode(audioContext, "yin-processor");
@@ -314,20 +312,20 @@
                             const pitch = event.data.pitch;
 
                             if (pitch !== -1) {
-                                infoArea.setText(`ピッチ: ${pitch.toFixed(1)} Hz`);
-                            } else {
-                                infoArea.setText(`ピッチ: 未検出`);
+                                infoArea.setText(`${pitch.toFixed(1)} Hz`);
+                            }
+                            else {
+                                infoArea.setText("-- Hz");
                             }
                         };
                         
                         microphone.connect(this.node);
                     });
+
+                    visualiser.setData(new Uint8Array(visualiser.bins));
                 }
 
                 stop() {
-                }
-
-                update() {
                 }
             };
 
