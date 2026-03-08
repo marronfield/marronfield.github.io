@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ピッチモニター</title>
+
+    <style>
+        :root {
+            user-select: none;
+
+            --text: #333;
+            --text-secondary: #666;
+            --text-link: #1a0dab;
+            --background: #fff;
+            --border: #ccc;
+            --border-active: #2673cb;
+            --shadow: rgba(63, 63, 63, 0.2);
+            --shadow-active: rgba(51, 170, 255, 0.5);
+
+            @media (prefers-color-scheme: dark) {
+                --text: #ccc;
+                --text-secondary: #999;
+                --text-link: #99c3ff;
+                --background: #111;
+                --border: #444;
+                --shadow: rgba(192, 192, 192, 0.2);
+                --shadow-active: rgba(0, 104, 223, 0.5);
+            }
+        }
+        
+        body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+
+            background-color: var(--background);
+            color: var(--text);
+            font-family: system-ui;
+        }
+    </style>
+</head>
+
+<body>
+    <script>
+    (async () => {
+        const createElement = (name, props, ...children) => {
+            props ??= {};
+
+            const element = (
+                ["svg", "path", "circle", "rect", "polygon", "polyline", "line", "ellipse", "text", "tspan", "g", "clipPath", "foreignObject"].includes(name)
+                ? document.createElementNS("http://www.w3.org/2000/svg", name)
+                : document.createElement(name)
+            );
+
+            for (const [key, value] of Object.entries(props)) {
+                if (key === "style") {
+                    Object.assign(element.style, value);
+                }
+                else if (key === "class") {
+                    for (const className of value.split(/\s+/)) {
+                        element.classList.add(className);
+                    }
+                }
+                else if (key === "attrs") {
+                    for (const [key, _value] of Object.entries(value)) {
+                        element.setAttribute(key, _value);
+                    }
+                }
+                else if (key === "dataset") {
+                    Object.assign(element.dataset, value);
+                }
+                else {
+                    element[key] = value;
+                }
+            }
+
+            element.append(...children);
+
+            return element;
+        };
+        const LogConverter = class {
+            constructor(fftSize, sampleRate, outputBins) {
+                this.createLookupTables(fftSize, sampleRate, outputBins);
+            }
+
+            createLookupTables(fftSize, sampleRate, outputBins) {
+                const inputBins = fftSize / 2;
+                const fmin = sampleRate / fftSize;
+                const fmax = sampleRate / 2;
+                const logfmin = Math.log(fmin);
+                const logfmax = Math.log(fmax);
+
+                this.index0 = new Uint16Array(outputBins);
+                this.index1 = new Uint16Array(outputBins);
+                this.weight = new Float32Array(outputBins);
+
+                for (let i = 0; i < outputBins; i++) {
+                    const logf = logfmin + (logfmax - logfmin) * i / (outputBins - 1);
+                    const f = Math.exp(logf);
+                    const pos = f / fmax * (inputBins - 1);
+                    const i0 = Math.floor(pos);
+                    const i1 = Math.min(i0 + 1, inputBins - 1);
+
+                    this.index0[i] = i0;
+                    this.index1[i] = i1;
+                    this.weight[i] = pos - i0;
+                }
+            }
+
+            convert(input, output) {
+                for (let i = 0; i < output.length; i++) {
+                    const a = input[this.index0[i]];
+                    const b = input[this.index1[i]];
+
+                    output[i] = a + (b - a) * this.weight[i];
+                }
+            }
+        };
+
+        const audioCtx = new AudioContext();
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        const spectrumAnalyser = new class {
+            bins = 256;
+
+            constructor() {
+                this.source = new MediaStreamAudioSourceNode(audioCtx, { mediaStream: stream });
+                this.analyser = new AnalyserNode(audioCtx, { smoothingTimeConstant: 0 });
+                this.dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+                this.logDataArray = new Uint8Array(this.bins);
+                this.converter = new LogConverter(this.analyser.fftSize, audioCtx.sampleRate, this.bins);
+
+                this.source.connect(this.analyser);
+
+                this.elem = createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "space-evenly" }});
+                this.bars = Array.from({ length: this.bins }, () => createElement("div", { style: { width: "1px", background: "white" }}));
+                this.elem.append(...this.bars);
+                document.body.append(this.elem);
+
+                this.#tick();
+            }
+
+            #tick() {
+                this.analyser.getByteFrequencyData(this.dataArray);
+                this.converter.convert(this.dataArray, this.logDataArray)
+
+                this.logDataArray.forEach((value, index) => {
+                    this.bars[index].style.height = value / 255 * 100 + "%";
+                });
+
+                requestAnimationFrame(() => this.#tick());
+            }
+        }();
+    })();
+    </script>
+</body>
+
+</html>
