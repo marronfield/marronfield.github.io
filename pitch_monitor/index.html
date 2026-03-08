@@ -52,7 +52,6 @@
 <body>
     <script>
     (async () => {
-    try { 
         const createElement = (name, props, ...children) => {
             props ??= {};
 
@@ -359,13 +358,6 @@
                 this.runningProcessor = new Processor();
             }
         }();
-    }
-    catch (error) {
-        alert("エラー: " + error.name + "\n" + error.stack);
-        alert("r");
-        alert("u");
-        alert("i");
-    }
     })();
     </script>
 </body>
