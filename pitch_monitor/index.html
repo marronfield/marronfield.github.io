@@ -133,11 +133,12 @@
 
         const spectrumAnalyser = new class {
             bins = 88;
+            binNames = ["A0", "A#0", "B0", ...Array.from({ length: 7 }, (_, i) => ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"].map(name => name + (i+1))).flat(), "C8"];
             prev = new Date();
 
             constructor() {
                 this.source = new MediaStreamAudioSourceNode(audioCtx, { fftSize: 4096, mediaStream: stream });
-                this.analyser = new AnalyserNode(audioCtx, { smoothingTimeConstant: 0 });
+                this.analyser = new AnalyserNode(audioCtx, { maxDecibels: 0, smoothingTimeConstant: 0 });
                 this.dataArray = new Float32Array(this.analyser.frequencyBinCount);
                 this.logDataArray = new Float32Array(this.bins);
                 this.converter = new LogConverter(this.analyser.fftSize, audioCtx.sampleRate, { outputBins: this.bins, fmin: 440 * 2**-4, fmax: 440 * 2**(39/12) });
@@ -157,14 +158,19 @@
                 this.analyser.getFloatFrequencyData(this.dataArray);
                 this.converter.convert(this.dataArray, this.logDataArray)
 
+                let maxIndex = -1;
                 this.logDataArray.forEach((value, index) => {
+                    if (maxIndex === -1 || value> this.logDataArray[maxIndex]) maxIndex = index;
+
                     this.bars[index].style.height = Math.max(0, value + 100) + "%";
                 });
 
                 const now = new Date();
                 const sec = (now - this.prev) / 1000;
-                this.status.textContent = (1 / sec).toPrecision(3) + " fps";
+                const fps = (1 / sec).toPrecision(3);
                 this.prev = now;
+
+                this.status.innerText = fps + " fps\n" + this.binNames[maxIndex];
 
                 requestAnimationFrame(() => this.#tick());
             }
