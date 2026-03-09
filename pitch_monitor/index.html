@@ -88,8 +88,8 @@
             return element;
         };
         
-        const audioContext = new AudioContext();
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const audioContext = new AudioContext();
         const microphone = new MediaStreamAudioSourceNode(audioContext, { mediaStream: stream });
 
         const infoArea = new class {
@@ -197,7 +197,6 @@
 
                 update() {
                     this.node.getFloatFrequencyData(this.dataArray);
-                    console.log(this.dataArray)
                     this.converter.convert(this.dataArray, this.logDataArray);
                     for (let i = 0; i < this.logDataArray.length; i++) this.logDataArray[i] += 100;
 
