@@ -119,6 +119,7 @@
 
             setData(dataArray, highlightedIndex = -1) {
                 dataArray.forEach((value, index) => {
+                    console.log(value)
                     this.bars[index].style.height = Math.max(0, value) + "%";
                     this.bars[index].style.background = index === highlightedIndex ? "var(--text)" : "var(--border)";
                 });
@@ -203,7 +204,6 @@
                     const dataArray = this.logDataArray;
                     const maxIndex = dataArray.reduce((maxIndex, value, index) => value > dataArray[maxIndex] ? index : maxIndex, 0);
                     visualiser.setData(dataArray, maxIndex);
-                    console.log("dataArray.length:", dataArray.length)
 
                     this.requestID = requestAnimationFrame(() => this.update());
                 }
