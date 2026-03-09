@@ -185,8 +185,6 @@
                     this.dataArray = new Float32Array(this.node.frequencyBinCount);
                     this.logDataArray = new Float32Array(visualiser.bins);
                     this.converter = new this.LogConverter(this.node.fftSize, audioContext.sampleRate);
-                    console.log("this.dataArray.length:", this.dataArray.length)
-                    console.log("this.logDataArray.length:", this.logDataArray.length)
                     
                     microphone.connect(this.node);
                     this.update();
@@ -205,6 +203,7 @@
                     const dataArray = this.logDataArray;
                     const maxIndex = dataArray.reduce((maxIndex, value, index) => value > dataArray[maxIndex] ? index : maxIndex, 0);
                     visualiser.setData(dataArray, maxIndex);
+                    console.log("dataArray.length:", dataArray.length)
 
                     this.requestID = requestAnimationFrame(() => this.update());
                 }
