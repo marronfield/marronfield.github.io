@@ -119,7 +119,6 @@
 
             setData(dataArray, highlightedIndex = -1) {
                 dataArray.forEach((value, index) => {
-                    console.log(value)
                     this.bars[index].style.height = Math.max(0, value) + "%";
                     this.bars[index].style.background = index === highlightedIndex ? "var(--text)" : "var(--border)";
                 });
@@ -198,6 +197,7 @@
 
                 update() {
                     this.node.getFloatFrequencyData(this.dataArray);
+                    console.log(this.dataArray)
                     this.converter.convert(this.dataArray, this.logDataArray);
                     for (let i = 0; i < this.logDataArray.length; i++) this.logDataArray[i] += 100;
 
